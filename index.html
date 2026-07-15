@@ -3,10 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Inventur">
 <meta name="theme-color" content="#1f2430">
+<!--
+  BEWUSST OHNE apple-mobile-web-app-capable=yes: Im iOS-Standalone-Modus (echte
+  Homescreen-App) hat die Seite einen EIGENEN, von Safari getrennten Cookie-/Login-
+  Speicher. Die eingebettete Apps-Script-Seite verlangt aber Google-Login – den es
+  dort nicht gibt, weshalb der iframe leer bleibt. Ohne das Meta öffnet das
+  Homescreen-Icon in Safari (geteilte Anmeldung) und die Einbettung funktioniert.
+-->
+
 <title>Inventur-Scanner</title>
 <!--
   Eigenständige Kamera-Shell für die QR-Inventur (Scan-Weg C, DOKUMENTATION §13).
