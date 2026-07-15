@@ -21,11 +21,14 @@
   :root{--accent:#4f7cff;--ink:#1f2430;--muted:#8a8fa3;--line:#e4e6ec;--bg:#f7f8fb;--ok:#1a8a4a;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;height:100%;background:#000;}
+  /* Bewusst KEIN Flexbox-Layout: iOS-Safari gibt einem iframe als Flex-Item oft
+     Höhe 0 -> eingebetteter Teil unsichtbar. Stattdessen normaler Block-Stapel,
+     und die iframe-Höhe wird per JS (fitApp) auf den Restplatz gesetzt. */
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);
-    display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;}
+    height:100vh;height:100dvh;overflow:hidden;position:relative;}
 
   /* Kamera-Bereich oben */
-  #scanner{position:relative;flex:0 0 auto;height:38vh;background:#000;overflow:hidden;}
+  #scanner{position:relative;height:38vh;background:#000;overflow:hidden;}
   #cam{width:100%;height:100%;object-fit:cover;display:block;background:#000;}
   #reticle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
   #reticle::before{content:"";width:56%;max-width:230px;aspect-ratio:1;border:3px solid rgba(255,255,255,.85);
@@ -43,8 +46,9 @@
   #manualRow.hidden{display:none;}
   #manual{flex:1;padding:10px 11px;border:1px solid var(--line);border-radius:9px;font-size:15px;text-transform:uppercase;}
 
-  /* Eingebettete Apps-Script-App */
-  #app{flex:1 1 auto;width:100%;border:0;background:var(--bg);}
+  /* Eingebettete Apps-Script-App. Höhe setzt fitApp() per JS; die vh-Angabe ist
+     nur ein Startwert, bis das Script greift. display:block wichtig für iOS. */
+  #app{display:block;width:100%;border:0;background:var(--bg);height:52vh;}
 
   /* Homescreen-Tipp */
   #hint{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:8px 12px;background:#eef2ff;
@@ -91,6 +95,20 @@
   var frame = $("app"), video = $("cam"), status = $("camstatus");
   function setStatus(t){ status.textContent = t; }
 
+  // Höhe des eingebetteten iframes auf den verbleibenden Platz setzen. Ersetzt das
+  // fehleranfällige Flex-/vh-Layout, das auf iOS-Safari den iframe auf Höhe 0
+  // kollabieren ließ. Nach jeder Layout-Änderung oben (Tipp/Eingabefeld/Drehung) neu.
+  function fitApp(){
+    var top = frame.getBoundingClientRect().top;
+    var h = (window.innerHeight || document.documentElement.clientHeight) - top;
+    if (h > 120) frame.style.height = h + "px";
+  }
+  window.addEventListener("resize", fitApp);
+  window.addEventListener("orientationchange", function(){ setTimeout(fitApp, 300); });
+  // iOS braucht nach dem ersten Layout ein, zwei Ticks, bis innerHeight stimmt.
+  window.addEventListener("load", function(){ fitApp(); setTimeout(fitApp, 250); });
+  setTimeout(fitApp, 50);
+
   function execBase(){
     var i = EXEC_URL.indexOf("/exec");
     return i === -1 ? "" : EXEC_URL.substring(0, i + 5);
@@ -112,6 +130,7 @@
     $("hintX").addEventListener("click", function(){
       $("hint").classList.add("hidden");
       try { localStorage.setItem("hsHint", "1"); } catch(e){}
+      fitApp();
     });
   })();
 
@@ -137,6 +156,7 @@
   $("manualBtn").addEventListener("click", function(){
     var row = $("manualRow"); row.classList.toggle("hidden");
     if (!row.classList.contains("hidden")) $("manual").focus();
+    fitApp();
   });
   $("send").addEventListener("click", function(){
     var v = $("manual").value; $("manual").value = ""; sende(v);
