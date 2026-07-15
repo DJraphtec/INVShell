@@ -55,6 +55,13 @@
     color:#31407a;font-size:12.5px;border-bottom:1px solid #d7deff;}
   #hint.hidden{display:none;}
   #hint button{margin-left:auto;background:#fff;color:#31407a;padding:6px 12px;font-size:12.5px;}
+
+  /* Vollbild-Dialog: Sobald in der App ein Zaehl-/Anlege-Dialog offen ist, blenden
+     wir Kamera + Bedienleiste aus, und der iframe (fitApp) fuellt den ganzen Screen. */
+  body.fullapp #scanner,
+  body.fullapp #bar,
+  body.fullapp #manualRow,
+  body.fullapp #hint{display:none !important;}
 </style>
 </head>
 <body>
@@ -150,6 +157,29 @@
     if (!code) return;
     if (!frame.src){ setStatus("App noch nicht geladen."); return; }
     postToAll(frame.contentWindow, { code: code }, 0);
+  }
+
+  // ---- Rückmeldung aus der eingebetteten App (Vollbild-Dialog offen/zu) ----
+  // Die Inventur-Seite meldet "open", sobald ein Zähl-/Anlege-Dialog aufgeht, und
+  // "close", wenn sie wieder scanbereit ist. Danach richtet sich Kamera + Layout.
+  var resumeCam = false;
+  window.addEventListener("message", function(e){
+    var d = e.data;
+    if (!d || typeof d !== "object" || !("inv" in d)) return;
+    if (d.inv === "open") dialogVollbildAn();
+    else if (d.inv === "close") dialogVollbildAus();
+  }, false);
+
+  function dialogVollbildAn(){
+    resumeCam = !!stream;              // lief die Kamera? -> nachher wieder starten
+    if (stream) stopCam();
+    document.body.classList.add("fullapp");
+    fitApp();                         // iframe füllt jetzt den ganzen Screen
+  }
+  function dialogVollbildAus(){
+    document.body.classList.remove("fullapp");
+    fitApp();
+    if (resumeCam){ resumeCam = false; ladeJsqr(startCam); }
   }
 
   // ---- Manuelle Eingabe (Rückfall bei unlesbarem QR / Klartext) ----
