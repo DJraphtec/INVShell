@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Inventur">
+<meta name="theme-color" content="#1f2430">
+<title>Inventur-Scanner</title>
+<!--
+  Eigenständige Kamera-Shell für die QR-Inventur (Scan-Weg C, DOKUMENTATION §13).
+  Diese Datei ist dafür gedacht, in einem EIGENEN öffentlichen Repo als GitHub-Pages-
+  Seite (oder auf Netlify o.ä.) zu liegen. Sie enthält KEINE Geheimnisse:
+  Die unten eingetragene /exec-URL ist nur eine Adresse, kein Schlüssel – die App
+  dahinter verlangt weiterhin Google-Login (Bereitstellung "Jeder in <Organisation>").
+  Kamera funktioniert nur über HTTPS (Apple-Vorgabe) – deshalb externer HTTPS-Host,
+  nicht im gesperrten Apps-Script-iframe (§13.6).
+-->
+<style>
+  :root{--accent:#4f7cff;--ink:#1f2430;--muted:#8a8fa3;--line:#e4e6ec;--bg:#f7f8fb;--ok:#1a8a4a;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;background:#000;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);
+    display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;}
+
+  /* Kamera-Bereich oben */
+  #scanner{position:relative;flex:0 0 auto;height:38vh;background:#000;overflow:hidden;}
+  #cam{width:100%;height:100%;object-fit:cover;display:block;background:#000;}
+  #reticle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+  #reticle::before{content:"";width:56%;max-width:230px;aspect-ratio:1;border:3px solid rgba(255,255,255,.85);
+    border-radius:16px;box-shadow:0 0 0 2000px rgba(0,0,0,.28);}
+  #camstatus{position:absolute;left:0;right:0;bottom:0;padding:7px 12px;font-size:12px;color:#fff;
+    background:linear-gradient(transparent,rgba(0,0,0,.6));text-align:center;min-height:16px;}
+
+  /* Steuerleiste */
+  #bar{flex:0 0 auto;display:flex;gap:8px;padding:9px 12px;background:#fff;border-bottom:1px solid var(--line);align-items:center;}
+  button{border:0;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;padding:11px 14px;}
+  .primary{background:var(--accent);color:#fff;}
+  .ghost{background:#eef1f7;color:var(--ink);}
+  #camBtn{flex:1;}
+  #manualRow{flex:0 0 auto;display:flex;gap:8px;padding:9px 12px;background:#fff;border-bottom:1px solid var(--line);}
+  #manualRow.hidden{display:none;}
+  #manual{flex:1;padding:10px 11px;border:1px solid var(--line);border-radius:9px;font-size:15px;text-transform:uppercase;}
+
+  /* Eingebettete Apps-Script-App */
+  #app{flex:1 1 auto;width:100%;border:0;background:var(--bg);}
+
+  /* Homescreen-Tipp */
+  #hint{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:8px 12px;background:#eef2ff;
+    color:#31407a;font-size:12.5px;border-bottom:1px solid #d7deff;}
+  #hint.hidden{display:none;}
+  #hint button{margin-left:auto;background:#fff;color:#31407a;padding:6px 12px;font-size:12.5px;}
+</style>
+</head>
+<body>
+  <div id="hint" class="hidden">
+    <span>Tipp: über <b>Teilen → „Zum Home-Bildschirm"</b> als App speichern.</span>
+    <button id="hintX">OK</button>
+  </div>
+
+  <div id="scanner">
+    <video id="cam" playsinline muted></video>
+    <div id="reticle"></div>
+    <div id="camstatus">Tippe „Kamera starten" und halte den QR-Code in den Rahmen.</div>
+  </div>
+
+  <div id="bar">
+    <button id="camBtn" class="primary">Kamera starten</button>
+    <button id="manualBtn" class="ghost">Code eintippen</button>
+  </div>
+  <div id="manualRow" class="hidden">
+    <input id="manual" type="text" inputmode="text" autocomplete="off" autocapitalize="characters"
+      spellcheck="false" placeholder="WZM-A-000123-4">
+    <button id="send" class="primary" style="flex:0 0 auto">Senden</button>
+  </div>
+
+  <iframe id="app" title="Inventur"></iframe>
+
+<script>
+  // ===================================================================
+  //  HIER die /exec-URL der Web-App eintragen (endet auf /exec):
+  var EXEC_URL = "https://script.google.com/a/macros/imwizemann.de/s/AKfycbwojUFKxTxLGfPFVfa1YQLh9yiUmiBCLCTHtuAuZRuhmSbTIEYqIiGwabLRyD8o5To/exec";
+  // ===================================================================
+
+  // QR-Dekoder. Aus dem CDN geladen; für vollständig eigenständigen Betrieb
+  // kann jsQR.js neben diese Datei gelegt und die src auf "jsQR.js" gesetzt werden.
+  var JSQR_URL = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+
+  function $(id){ return document.getElementById(id); }
+  var frame = $("app"), video = $("cam"), status = $("camstatus");
+  function setStatus(t){ status.textContent = t; }
+
+  function execBase(){
+    var i = EXEC_URL.indexOf("/exec");
+    return i === -1 ? "" : EXEC_URL.substring(0, i + 5);
+  }
+
+  // App sofort einbetten, damit sie bereit ist, wenn der erste Code kommt.
+  (function initFrame(){
+    var b = execBase();
+    if (!b){ setStatus("Keine gültige /exec-URL hinterlegt."); return; }
+    frame.src = b + "?page=inventur";
+  })();
+
+  // Homescreen-Tipp nur zeigen, solange nicht als installierte Web-App geöffnet.
+  (function homescreenHint(){
+    var standalone = window.navigator.standalone || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+    var dismissed = false;
+    try { dismissed = localStorage.getItem("hsHint") === "1"; } catch(e){}
+    if (!standalone && !dismissed) $("hint").classList.remove("hidden");
+    $("hintX").addEventListener("click", function(){
+      $("hint").classList.add("hidden");
+      try { localStorage.setItem("hsHint", "1"); } catch(e){}
+    });
+  })();
+
+  // Code per postMessage nach innen: Apps Script verschachtelt die Nutzer-HTML in
+  // einem (teils mehrfach) genesteten Sandbox-iframe, und der Ziel-Frame ist NICHT
+  // zuverlässig frames[0]. Deshalb rekursiv an ALLE Nachfahren-Frames senden –
+  // einer davon ist die Inventur-Seite (sie filtert auf e.data.code).
+  function postToAll(win, payload, depth){
+    if (!win || depth > 8) return;
+    try { win.postMessage(payload, "*"); } catch(e){}
+    var n = 0;
+    try { n = win.frames.length; } catch(e){ n = 0; }
+    for (var i = 0; i < n; i++){ try { postToAll(win.frames[i], payload, depth + 1); } catch(e){} }
+  }
+  function sende(code){
+    code = (code || "").trim();
+    if (!code) return;
+    if (!frame.src){ setStatus("App noch nicht geladen."); return; }
+    postToAll(frame.contentWindow, { code: code }, 0);
+  }
+
+  // ---- Manuelle Eingabe (Rückfall bei unlesbarem QR / Klartext) ----
+  $("manualBtn").addEventListener("click", function(){
+    var row = $("manualRow"); row.classList.toggle("hidden");
+    if (!row.classList.contains("hidden")) $("manual").focus();
+  });
+  $("send").addEventListener("click", function(){
+    var v = $("manual").value; $("manual").value = ""; sende(v);
+  });
+  $("manual").addEventListener("keydown", function(e){
+    if (e.key === "Enter"){ e.preventDefault(); var v = this.value; this.value = ""; sende(v); }
+  });
+
+  // ---- Kamera + QR-Scan ----
+  var stream = null, scanning = false, jsqrReady = false;
+  var canvas = document.createElement("canvas"), ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+  function ladeJsqr(cb){
+    if (jsqrReady){ cb(); return; }
+    var s = document.createElement("script");
+    s.src = JSQR_URL;
+    s.onload = function(){ jsqrReady = true; cb(); };
+    s.onerror = function(){ setStatus("QR-Bibliothek konnte nicht geladen werden – Internet prüfen."); };
+    document.head.appendChild(s);
+  }
+
+  $("camBtn").addEventListener("click", function(){
+    if (stream){ stopCam(); return; }
+    setStatus("Kamera wird gestartet …");
+    ladeJsqr(startCam);
+  });
+
+  function startCam(){
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(function(s){
+        stream = s; video.srcObject = s; video.play();
+        scanning = true; $("camBtn").textContent = "Kamera stoppen";
+        setStatus("QR-Code in den Rahmen halten.");
+        requestAnimationFrame(tick);
+      })
+      .catch(function(err){ setStatus("Kamera nicht möglich: " + err.message); });
+  }
+  function stopCam(){
+    scanning = false;
+    if (stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+    $("camBtn").textContent = "Kamera starten";
+    setStatus("Kamera aus.");
+  }
+
+  var lastCode = "", lastAt = 0;
+  function tick(){
+    if (!scanning) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA){
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var res = window.jsQR ? window.jsQR(img.data, img.width, img.height) : null;
+      if (res && res.data){
+        var now = Date.now();
+        if (res.data !== lastCode || now - lastAt > 2500){   // gleichen Code entprellen
+          lastCode = res.data; lastAt = now;
+          sende(res.data);
+          setStatus("Gescannt: " + res.data);
+          if (navigator.vibrate) navigator.vibrate(60);
+        }
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+</script>
+</body>
+</html>
