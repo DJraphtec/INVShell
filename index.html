@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-title" content="Inventur">
-<meta name="theme-color" content="#1f2430">
+<meta name="theme-color" content="#262a1f">
 <!--
   BEWUSST OHNE apple-mobile-web-app-capable=yes: Im iOS-Standalone-Modus (echte
   Homescreen-App) hat die Seite einen EIGENEN, von Safari getrennten Cookie-/Login-
@@ -24,7 +24,7 @@
   nicht im gesperrten Apps-Script-iframe (§13.6).
 -->
 <style>
-  :root{--accent:#4f7cff;--ink:#1f2430;--muted:#8a8fa3;--line:#e4e6ec;--bg:#f7f8fb;--ok:#1a8a4a;}
+  :root{--accent:#5b7a3a;--ink:#262a1f;--muted:#82836f;--line:#d9dcc4;--bg:#f7f7ee;--ok:#2f7a68;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;height:100%;background:#000;}
   /* Flexbox-Spalte. WICHTIG: Der iframe darf NICHT direkt Flex-Item sein – iOS-Safari
@@ -47,7 +47,7 @@
   #bar{flex:0 0 auto;display:flex;gap:8px;padding:9px 12px;background:#fff;border-bottom:1px solid var(--line);align-items:center;}
   button{border:0;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;padding:11px 14px;}
   .primary{background:var(--accent);color:#fff;}
-  .ghost{background:#eef1f7;color:var(--ink);}
+  .ghost{background:#eaf0dc;color:var(--ink);}
   #camBtn{flex:1;}
   #manualRow{flex:0 0 auto;display:flex;gap:8px;padding:9px 12px;background:#fff;border-bottom:1px solid var(--line);}
   #manualRow.hidden{display:none;}
@@ -58,26 +58,14 @@
   #appwrap{flex:1 1 auto;position:relative;min-height:0;background:var(--bg);}
   #app{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;border:0;background:var(--bg);}
 
-  /* Homescreen-Tipp */
-  #hint{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:8px 12px;background:#eef2ff;
-    color:#31407a;font-size:12.5px;border-bottom:1px solid #d7deff;}
-  #hint.hidden{display:none;}
-  #hint button{margin-left:auto;background:#fff;color:#31407a;padding:6px 12px;font-size:12.5px;}
-
   /* Vollbild-Dialog: Zaehl-/Anlege-Dialog offen -> Kamera + Bedienleiste aus,
      #appwrap (flex:1) füllt dann von selbst den ganzen Screen. */
   body.fullapp #scanner,
   body.fullapp #bar,
-  body.fullapp #manualRow,
-  body.fullapp #hint{display:none !important;}
+  body.fullapp #manualRow{display:none !important;}
 </style>
 </head>
 <body>
-  <div id="hint" class="hidden">
-    <span>Tipp: über <b>Teilen → „Zum Home-Bildschirm"</b> als App speichern.</span>
-    <button id="hintX">OK</button>
-  </div>
-
   <div id="scanner">
     <video id="cam" playsinline muted></video>
     <div id="reticle"></div>
@@ -120,18 +108,6 @@
     var b = execBase();
     if (!b){ setStatus("Keine gültige /exec-URL hinterlegt."); return; }
     frame.src = b + "?page=inventur";
-  })();
-
-  // Homescreen-Tipp nur zeigen, solange nicht als installierte Web-App geöffnet.
-  (function homescreenHint(){
-    var standalone = window.navigator.standalone || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
-    var dismissed = false;
-    try { dismissed = localStorage.getItem("hsHint") === "1"; } catch(e){}
-    if (!standalone && !dismissed) $("hint").classList.remove("hidden");
-    $("hintX").addEventListener("click", function(){
-      $("hint").classList.add("hidden");
-      try { localStorage.setItem("hsHint", "1"); } catch(e){}
-    });
   })();
 
   // Code per postMessage nach innen: Apps Script verschachtelt die Nutzer-HTML in
