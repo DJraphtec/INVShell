@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-title" content="Inventur">
-<meta name="theme-color" content="#262a1f">
+<meta name="theme-color" content="#14161a">
 <!--
   BEWUSST OHNE apple-mobile-web-app-capable=yes: Im iOS-Standalone-Modus (echte
   Homescreen-App) hat die Seite einen EIGENEN, von Safari getrennten Cookie-/Login-
@@ -24,34 +24,49 @@
   nicht im gesperrten Apps-Script-iframe (§13.6).
 -->
 <style>
-  :root{--accent:#5b7a3a;--ink:#262a1f;--muted:#82836f;--line:#d9dcc4;--bg:#f7f7ee;--ok:#2f7a68;}
+  /* ACHTUNG – HANDGEPFLEGTE KOPIE.
+     Diese Datei liegt auf GitHub Pages, außerhalb des Apps-Script-Projekts, und
+     kann src/Stile.html technisch nicht einbinden. Die Tokens unten sind eine
+     Kopie von dort: ändert sich in Stile.html eine Farbe, muss sie hier
+     mitgezogen werden. Es sind bewusst nur die wenigen, die die Shell braucht. */
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@500;700;800&family=PT+Serif:ital@0;1&display=swap');
+  :root{--accent:#1123F1;--accent-ink:#ffffff;--ink:#14161a;--muted:#6b6f76;
+    --line:#dcdcdc;--bg:#f5f5f3;--card:#ffffff;
+    --f-ui:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;height:100%;background:#000;}
   /* Flexbox-Spalte. WICHTIG: Der iframe darf NICHT direkt Flex-Item sein – iOS-Safari
      gibt ihm dann Höhe 0 (eingebetteter Teil unsichtbar). Deshalb steckt er in
      #appwrap (dem Flex-Item) und füllt es per position:absolute. Kein JS für die
      Höhe -> robust im Browser wie im Homescreen-Modus. */
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);
+  body{font-family:var(--f-ui);color:var(--ink);
     height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;}
 
   /* Kamera-Bereich oben */
   #scanner{position:relative;flex:0 0 auto;height:38vh;background:#000;overflow:hidden;}
   #cam{width:100%;height:100%;object-fit:cover;display:block;background:#000;}
   #reticle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
-  #reticle::before{content:"";width:56%;max-width:230px;aspect-ratio:1;border:3px solid rgba(255,255,255,.85);
-    border-radius:16px;box-shadow:0 0 0 2000px rgba(0,0,0,.28);}
-  #camstatus{position:absolute;left:0;right:0;bottom:0;padding:7px 12px;font-size:12px;color:#fff;
-    background:linear-gradient(transparent,rgba(0,0,0,.6));text-align:center;min-height:16px;}
+  /* Kantiger Sucher passend zur übrigen Formensprache (kein Radius). */
+  #reticle::before{content:"";width:56%;max-width:230px;aspect-ratio:1;border:3px solid rgba(255,255,255,.9);
+    box-shadow:0 0 0 2000px rgba(0,0,0,.3);}
+  #camstatus{position:absolute;left:0;right:0;bottom:0;padding:8px 12px;font-size:11.5px;font-weight:700;
+    letter-spacing:.04em;text-transform:uppercase;color:#fff;
+    background:linear-gradient(transparent,rgba(0,0,0,.65));text-align:center;min-height:16px;}
 
   /* Steuerleiste */
-  #bar{flex:0 0 auto;display:flex;gap:8px;padding:9px 12px;background:#fff;border-bottom:1px solid var(--line);align-items:center;}
-  button{border:0;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;padding:11px 14px;}
-  .primary{background:var(--accent);color:#fff;}
-  .ghost{background:#eaf0dc;color:var(--ink);}
+  #bar{flex:0 0 auto;display:flex;gap:8px;padding:9px 12px;background:var(--card);
+    border-bottom:1.5px solid var(--ink);align-items:center;}
+  button{border:1.5px solid var(--ink);border-radius:0;font-size:13px;font-weight:800;
+    letter-spacing:.04em;text-transform:uppercase;font-family:inherit;cursor:pointer;padding:11px 14px;}
+  .primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+  .ghost{background:var(--card);color:var(--ink);}
   #camBtn{flex:1;}
-  #manualRow{flex:0 0 auto;display:flex;gap:8px;padding:9px 12px;background:#fff;border-bottom:1px solid var(--line);}
+  #manualRow{flex:0 0 auto;display:flex;gap:8px;padding:9px 12px;background:var(--card);
+    border-bottom:1.5px solid var(--ink);}
   #manualRow.hidden{display:none;}
-  #manual{flex:1;padding:10px 11px;border:1px solid var(--line);border-radius:9px;font-size:15px;text-transform:uppercase;}
+  #manual{flex:1;padding:10px 11px;border:1.5px solid var(--line);border-radius:0;font-size:15px;
+    font-family:inherit;letter-spacing:.03em;text-transform:uppercase;background:var(--card);color:var(--ink);}
+  #manual:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(17,35,241,.18);}
 
   /* Eingebettete Apps-Script-App: #appwrap ist das Flex-Element (bekommt die
      Resthöhe), der iframe füllt es absolut aus – kein iframe-Kollaps auf iOS. */
