@@ -8,7 +8,7 @@
 <!--
   BEWUSST OHNE apple-mobile-web-app-capable=yes: Im iOS-Standalone-Modus (echte
   Homescreen-App) hat die Seite einen EIGENEN, von Safari getrennten Cookie-/Login-
-  Speicher. Die eingebettete Apps-Script-Seite verlangt aber Google-Login – den es
+  Speicher. Die eingebettete Apps-Script-Seite verlangt aber Google-Login, den es
   dort nicht gibt, weshalb der iframe leer bleibt. Ohne das Meta öffnet das
   Homescreen-Icon in Safari (geteilte Anmeldung) und die Einbettung funktioniert.
 -->
@@ -18,13 +18,13 @@
   Eigenständige Kamera-Shell für die QR-Inventur (Scan-Weg C, DOKUMENTATION §13).
   Diese Datei ist dafür gedacht, in einem EIGENEN öffentlichen Repo als GitHub-Pages-
   Seite (oder auf Netlify o.ä.) zu liegen. Sie enthält KEINE Geheimnisse:
-  Die unten eingetragene /exec-URL ist nur eine Adresse, kein Schlüssel – die App
+  Die unten eingetragene /exec-URL ist nur eine Adresse, kein Schlüssel: die App
   dahinter verlangt weiterhin Google-Login (Bereitstellung "Jeder in <Organisation>").
-  Kamera funktioniert nur über HTTPS (Apple-Vorgabe) – deshalb externer HTTPS-Host,
-  nicht im gesperrten Apps-Script-iframe (§13.6).
+  Kamera funktioniert nur über HTTPS (Apple-Vorgabe). Deshalb externer HTTPS-Host
+  statt gesperrtem Apps-Script-iframe (§13.6).
 -->
 <style>
-  /* ACHTUNG – HANDGEPFLEGTE KOPIE.
+  /* ACHTUNG: HANDGEPFLEGTE KOPIE.
      Diese Datei liegt auf GitHub Pages, außerhalb des Apps-Script-Projekts, und
      kann src/Stile.html technisch nicht einbinden. Die Tokens unten sind eine
      Kopie von dort: ändert sich in Stile.html eine Farbe, muss sie hier
@@ -35,10 +35,10 @@
     --f-ui:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;height:100%;background:#000;}
-  /* Flexbox-Spalte. WICHTIG: Der iframe darf NICHT direkt Flex-Item sein – iOS-Safari
+  /* Flexbox-Spalte. WICHTIG: Der iframe darf NICHT direkt Flex-Item sein: iOS-Safari
      gibt ihm dann Höhe 0 (eingebetteter Teil unsichtbar). Deshalb steckt er in
      #appwrap (dem Flex-Item) und füllt es per position:absolute. Kein JS für die
-     Höhe -> robust im Browser wie im Homescreen-Modus. */
+     Höhe nötig, das funktioniert im Browser wie im Homescreen-Modus gleich gut. */
   body{font-family:var(--f-ui);color:var(--ink);
     height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;}
 
@@ -69,7 +69,7 @@
   #manual:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(17,35,241,.18);}
 
   /* Eingebettete Apps-Script-App: #appwrap ist das Flex-Element (bekommt die
-     Resthöhe), der iframe füllt es absolut aus – kein iframe-Kollaps auf iOS. */
+     Resthöhe), der iframe füllt es absolut aus: das verhindert den iframe-Kollaps auf iOS. */
   #appwrap{flex:1 1 auto;position:relative;min-height:0;background:var(--bg);}
   #app{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;border:0;background:var(--bg);}
 
@@ -127,8 +127,8 @@
 
   // Code per postMessage nach innen: Apps Script verschachtelt die Nutzer-HTML in
   // einem (teils mehrfach) genesteten Sandbox-iframe, und der Ziel-Frame ist NICHT
-  // zuverlässig frames[0]. Deshalb rekursiv an ALLE Nachfahren-Frames senden –
-  // einer davon ist die Inventur-Seite (sie filtert auf e.data.code).
+  // zuverlässig frames[0]. Deshalb rekursiv an ALLE Nachfahren-Frames senden.
+  // Einer davon ist die Inventur-Seite (sie filtert auf e.data.code).
   function postToAll(win, payload, depth){
     if (!win || depth > 8) return;
     try { win.postMessage(payload, "*"); } catch(e){}
@@ -185,7 +185,7 @@
     var s = document.createElement("script");
     s.src = JSQR_URL;
     s.onload = function(){ jsqrReady = true; cb(); };
-    s.onerror = function(){ setStatus("QR-Bibliothek konnte nicht geladen werden – Internet prüfen."); };
+    s.onerror = function(){ setStatus("QR-Bibliothek konnte nicht geladen werden. Internet prüfen."); };
     document.head.appendChild(s);
   }
 
